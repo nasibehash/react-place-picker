@@ -5,45 +5,65 @@ import Modal from './components/Modal.jsx';
 import DeleteConfirmation from './components/DeleteConfirmation.jsx';
 import logoImg from './assets/logo.png';
 import AvailablePlaces from './components/AvailablePlaces.jsx';
+import { UpdateUserPlaces } from './http.js';
+import Error from './components/Error.jsx';
 
-function App() {
+function App () {
   const selectedPlace = useRef();
 
-  const [userPlaces, setUserPlaces] = useState([]);
+  const [ userPlaces, setUserPlaces ] = useState([]);
 
-  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [ modalIsOpen, setModalIsOpen ] = useState(false);
 
-  function handleStartRemovePlace(place) {
+  const [ errorUpdatingPlaces, setErrorUpdatingPlaces ] = useState();
+
+  function handleStartRemovePlace ( place ) {
     setModalIsOpen(true);
     selectedPlace.current = place;
   }
 
-  function handleStopRemovePlace() {
+  function handleStopRemovePlace () {
     setModalIsOpen(false);
   }
 
-  function handleSelectPlace(selectedPlace) {
-    setUserPlaces((prevPickedPlaces) => {
+  async function handleSelectPlace ( selectedPlace ) {
+    setUserPlaces(( prevPickedPlaces ) => {
       if (!prevPickedPlaces) {
         prevPickedPlaces = [];
       }
-      if (prevPickedPlaces.some((place) => place.id === selectedPlace.id)) {
+      if (prevPickedPlaces.some(( place ) => place.id === selectedPlace.id)) {
         return prevPickedPlaces;
       }
-      return [selectedPlace, ...prevPickedPlaces];
+      return [ selectedPlace, ...prevPickedPlaces ];
     });
+    try {
+      await UpdateUserPlaces([ selectedPlace, ...userPlaces ]);
+    } catch (error) {
+      setUserPlaces(userPlaces);
+      setErrorUpdatingPlaces({message: error.message || 'failed to update'});
+    }
   }
 
-  const handleRemovePlace = useCallback(async function handleRemovePlace() {
-    setUserPlaces((prevPickedPlaces) =>
-      prevPickedPlaces.filter((place) => place.id !== selectedPlace.current.id)
+  const handleRemovePlace = useCallback(async function handleRemovePlace () {
+    setUserPlaces(( prevPickedPlaces ) =>
+      prevPickedPlaces.filter(( place ) => place.id !== selectedPlace.current.id)
     );
 
     setModalIsOpen(false);
   }, []);
 
+  function handleError () {
+    setErrorUpdatingPlaces(null);
+  }
+
   return (
     <>
+      <Modal open={errorUpdatingPlaces} onClose={handleError}>
+        {errorUpdatingPlaces &&
+          <Error title="An error occured" message={errorUpdatingPlaces.message} onConfirm={handleError}/>
+        }
+      </Modal>
+
       <Modal open={modalIsOpen} onClose={handleStopRemovePlace}>
         <DeleteConfirmation
           onCancel={handleStopRemovePlace}
@@ -52,7 +72,7 @@ function App() {
       </Modal>
 
       <header>
-        <img src={logoImg} alt="Stylized globe" />
+        <img src={logoImg} alt="Stylized globe"/>
         <h1>PlacePicker</h1>
         <p>
           Create your personal collection of places you would like to visit or
@@ -67,7 +87,7 @@ function App() {
           onSelectPlace={handleStartRemovePlace}
         />
 
-        <AvailablePlaces onSelectPlace={handleSelectPlace} />
+        <AvailablePlaces onSelectPlace={handleSelectPlace}/>
       </main>
     </>
   );
